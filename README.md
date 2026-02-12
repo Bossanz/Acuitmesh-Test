@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎮 Tic-Tac-Toe fullstack-developer-internship-challenge
 
-## Getting Started
+ระบบเกม Tic-Tac-Toe แบบ Real-time Multiplayer ที่พัฒนาด้วย **Next.js 15 (App Router)**, **TypeScript**, **Prisma**, และ **PostgreSQL** เน้นประสิทธิภาพ Type Safety และการจัดการ Data Consistency ที่แม่นยำ
 
-First, run the development server:
+🔗 **Live Demo:** [https://acuitmesh-test.vercel.app/](https://acuitmesh-test.vercel.app/)
+📂 **Repository:** [https://github.com/Bossanz/Acuitmesh-Test](https://github.com/Bossanz/Acuitmesh-Test)
+
+---
+
+## ✨ ฟีเจอร์หลัก (Key Features)
+
+### Core Gameplay
+- **Multiplayer System:** สร้างห้องและเล่นกับเพื่อนได้ทันที (Room-based)
+- **Spectator Mode:** รองรับผู้เข้าชมเกม (Spectators) แบบ Real-time
+- **Turn-Based Logic:** ตรวจสอบตรรกะเกมและผู้ชนะที่ฝั่ง Server 100%
+
+### Technical Highlights (Bonus)
+- **🛡️ Race Condition Protection:** ป้องกันการแย่งเดิน (Double Move) ด้วย Database Transactions
+- **🎬 Replay System:** บันทึกทุก Move ลง Database สามารถดูรีเพลย์ย้อนหลังได้
+- **🐳 Dockerized:** รองรับการ Deploy ผ่าน Docker Container (มี `docker-compose.yml`)
+- **🎨 Modern UI:** ออกแบบด้วย Tailwind CSS (Glassmorphism) และ Framer Motion
+
+---
+
+## 🏗️ Architecture & Tech Stack
+
+ระบบถูกออกแบบด้วยสถาปัตยกรรม **Stateless Serverless** บน Vercel โดยใช้ Supabase เป็น Database หลัก
+
+- **Framework:** Next.js 15 (React Server Components & API Routes)
+- **Language:** TypeScript (.ts / .tsx) - *Strict Type Checking*
+- **Database ORM:** Prisma
+- **Database:** PostgreSQL (Supabase Connection Pooling)
+- **Styling:** Tailwind CSS
+
+---
+
+## 🛡️ การจัดการปัญหา Race Condition (Critical)
+
+โจทย์สำคัญของเกม Multiplayer คือการป้องกัน **Race Condition** (เช่น ผู้เล่น 2 คนกดยิง API มาลงช่องเดียวกันพร้อมกัน)
+
+ผมแก้ปัญหานี้ด้วย **Optimistic Concurrency Control** ผ่าน Prisma Transaction:
+
+### 1. Atomic Database Update
+ใช้เงื่อนไข `where` ในการ update เพื่อ lock row และตรวจสอบ `turn` ในคำสั่งเดียว:
+
+```typescript
+// app/api/games/[id]/move/route.ts
+const updatedGame = await prisma.game.update({
+  where: {
+    id: gameId,
+    turn: userId,           // 1. เช็คว่าเป็นตาของผู้เล่นคนนี้จริงหรือไม่
+    status: 'IN_PROGRESS',  // 2. เช็คว่าเกมจบไปแล้วหรือยัง
+  },
+  data: {
+    board: newBoardString,
+    turn: nextPlayerId,     // สลับตาเดินทันที
+  }
+});
+```
+หากมี Request ซ้อนกัน Request ที่มาช้ากว่าจะไม่สามารถ update ได้เพราะ turn เปลี่ยนไปแล้ว
+
+### 2. Database Constraint
+เพิ่ม Unique Constraint ในระดับ Database Schema ที่ตาราง Move
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+// prisma/schema.prisma
+model Move {
+  ...
+  @@unique([gameId, position]) // ป้องกันข้อมูลขยะในระดับ Database
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 วิธีการรันโปรเจกต์ (Local Development)
+Option 1: Docker (Recommended)
+```bash
+# 1. Clone & Enter directory
+git clone [https://github.com/Bossanz/Acuitmesh-Test.git](https://github.com/Bossanz/Acuitmesh-Test.git)
+cd Acuitmesh-Test
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# 2. Start Services
+docker-compose up --build
+```
+Access: `http://localhost:3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Option 2: Node.js (Manual)
+1. Install Dependencies
+```
+npm install
+# or pnpm install
+```
+2. Setup Environment Create .env file
+```
+DATABASE_URL="postgresql://..." # Transaction Mode (Port 6543)
+DIRECT_URL="postgresql://..."   # Session Mode (Port 5432)
+JWT_SECRET="secret"
+```
+3. Sync Database
+```
+npx prisma db push
+```
+4. Run Dev Server
+```
+npm run dev
+```
+Developed by: Chawakan Sanserm
