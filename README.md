@@ -102,4 +102,4 @@ npx prisma db push
 ```
 npm run dev
 ```
-Developed by: Chawakan Sanserm
+Developed by: นายชวการ แสนเสริม
