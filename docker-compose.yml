@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # 1. Database (เหมือนเดิมเป๊ะ)
+  postgres:
+    image: postgres:15-alpine
+    container_name: tictactoe-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tictactoe
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d tictactoe"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Web Server (แก้ command เป็น pnpm)
+  app:
+    container_name: tictactoe-app
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # ใช้ชื่อ service 'postgres' เป็น host
+      DATABASE_URL: "postgresql://user:password@postgres:5432/tictactoe?schema=public"
+      JWT_SECRET: "super-secret-key-change-me" 
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 🔥 Command แก้ตรงนี้: ใช้ pnpm แทน npm
+    command: >
+      sh -c "pnpm prisma db push && pnpm start"
+
+volumes:
+  postgres_data:
