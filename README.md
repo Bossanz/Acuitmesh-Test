@@ -90,7 +90,7 @@ npm install
 ```
 2. Setup Environment Create .env file
 ```
-DATABASE_URL="postgresql://..." # Transaction Mode (Port 6543)
+DATABASE_URL="postgresql://...?pgbouncer=true" # Transaction Mode (Port 6543)
 DIRECT_URL="postgresql://..."   # Session Mode (Port 5432)
 JWT_SECRET="secret"
 ```
